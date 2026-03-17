@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("CUSTOMER")
+  createdAt    DateTime @default(now())
+
+  company  Company?
+  bookings Booking[]
+  reviews  Review[]
+}
+
+model Company {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  managerId   String  @unique
+
+  manager User   @relation(fields: [managerId], references: [id])
+  teams   Team[]
+}
+
+model Team {
+  id           String  @id @default(cuid())
+  companyId    String
+  name         String
+  postcode     String?
+  areaLat      Float
+  areaLng      Float
+  areaRadiusKm Float
+  hourlyRate   Float   @default(20.0)
+
+  company      Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+  availability TeamAvailability[]
+  bookings     Booking[]
+  reviews      Review[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  name      String
+  email     String
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id               String @id @default(cuid())
+  name             String
+  estimatedMinutes Int
+  category         String
+
+  bookingServices BookingService[]
+}
+
+model TeamAvailability {
+  id        String   @id @default(cuid())
+  teamId    String
+  date      String
+  startTime String
+  endTime   String
+  isBooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  booking Booking?
+}
+
+model Booking {
+  id             String   @id @default(cuid())
+  customerId     String
+  teamId         String
+  availabilityId String   @unique
+  address        String
+  status         String   @default("PENDING")
+  totalMinutes   Int
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer     User             @relation(fields: [customerId], references: [id])
+  team         Team             @relation(fields: [teamId], references: [id])
+  availability TeamAvailability @relation(fields: [availabilityId], references: [id])
+  services     BookingService[]
+  review       Review?
+}
+
+model BookingService {
+  id        String @id @default(cuid())
+  bookingId String
+  serviceId String
+  quantity  Int    @default(1)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@unique([bookingId, serviceId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  customerId String
+  teamId     String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  customer User    @relation(fields: [customerId], references: [id])
+  team     Team    @relation(fields: [teamId], references: [id])
+}
